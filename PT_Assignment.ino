@@ -36,8 +36,8 @@ void goForwardWithBorderDetectUntilCornerReached() {
         reflectanceSensors.read(sensor_values);
         if (sensor_values[0] > QTR_THRESHOLD) {
           // if leftmost sensor detects line, reverse and turn to the right
-          motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
-          delay(REVERSE_DURATION);
+          //motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+          //delay(REVERSE_DURATION);
           motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
           delay(TURN_DURATION);
           motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
@@ -59,8 +59,12 @@ void goForwardWithBorderDetectUntilCornerReached() {
       // Once line in front of Zumo detected - will fall out of while loop and stop motors
       motors.setSpeeds(0, 0);
 
-      // Send message that a corner has been reached to GUI
+      // Send message that a corner has been reached to GUI     
+      Serial.println("Zumo has reached a corner.");
 
+      // Add in detection here to check what kind of corner Zumo is at??
+      // Need to ensure zumo is only given option to turn one way when at normal corner
+      // Or both ways when leaving a sub-corridor
       
 }
 
@@ -83,37 +87,39 @@ void setup() {
     // Init LED pin to enable it to be turned on later
     pinMode(LED_PIN, OUTPUT);
 
-    // Set up serial monitor for inital testing purposes
+    // Set up serial port to enable Arduino to communicate with GUI
     Serial.begin(9600);
-    Serial.println("waiting...");
 }
 
 void loop() {
-  if(Serial.available()) {
+  if(Serial.available() > 0) {
     char valFromGUI = Serial.read();
 
     if(valFromGUI == 'W') {
-      goForwardWithBorderDetectUntilCornerReached();
+      //playCountdown();
+      Serial.println("W received from GUI to Zumo!");
+      //goForwardWithBorderDetectUntilCornerReached();
     }
 
     // Turn Zumo left 90 degrees (maybe change this to incrementally?)
-    if(valFromGUI == 'L') {
-      
+    if(valFromGUI == 'A') {
+      Serial.println("A received.");    
+    }
+
+    // Stop Zumo (for when you reach a room or side-corridor)
+    if(valFromGUI == 'S') {
+      Serial.println("S received.");
+      motors.setSpeeds(0, 0);
     }
 
     // Turn Zumo right 90 degrees (maybe change this to incrementally?)
-    if(valFromGUI == 'R') {
-      
+    if(valFromGUI == 'D') {
+      Serial.println("D received.");      
     }
 
     // Signal that Zumo has completed turn and can carry on forward
     if(valFromGUI == 'C') {
       goForwardWithBorderDetectUntilCornerReached();   
-    }
-
-    // Stop Zumo (for when you reach a room or side-corridor)
-    if(valFromGUI == 'S') {
-      motors.setSpeeds(0, 0);
     }
 
     // Signal that a room is about to be entered
