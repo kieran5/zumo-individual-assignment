@@ -40,18 +40,22 @@ public void responseTxt_change(GTextArea source, GEvent event) { //_CODE_:respon
 
 public void completeBtn_click(GButton source, GEvent event) { //_CODE_:completeBtn:917622:
   println("completeBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("C");
 } //_CODE_:completeBtn:917622:
 
 public void roomBtn_click(GButton source, GEvent event) { //_CODE_:roomBtn:562327:
   println("roomBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("Ro");
 } //_CODE_:roomBtn:562327:
 
 public void corridorBtn_click(GButton source, GEvent event) { //_CODE_:corridorBtn:589553:
   println("corridorBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("Co");
 } //_CODE_:corridorBtn:589553:
 
 public void endBtn_click(GButton source, GEvent event) { //_CODE_:endBtn:377588:
   println("endBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("E");
 } //_CODE_:endBtn:377588:
 
 
