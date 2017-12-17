@@ -58,6 +58,11 @@ public void endBtn_click(GButton source, GEvent event) { //_CODE_:endBtn:377588:
   port.write("E");
 } //_CODE_:endBtn:377588:
 
+public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn:312950:
+  println("reverseBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("Rev");
+} //_CODE_:reverseBtn:312950:
+
 
 
 // Create all the GUI controls. 
@@ -107,6 +112,10 @@ public void createGUI(){
   endBtn.setText("End ofTrack");
   endBtn.setTextBold();
   endBtn.addEventHandler(this, "endBtn_click");
+  reverseBtn = new GButton(this, 173, 14, 57, 28);
+  reverseBtn.setText("Reverse");
+  reverseBtn.setTextBold();
+  reverseBtn.addEventHandler(this, "reverseBtn_click");
 }
 
 // Variable declarations 
@@ -121,3 +130,4 @@ GButton completeBtn;
 GButton roomBtn; 
 GButton corridorBtn; 
 GButton endBtn; 
+GButton reverseBtn;
