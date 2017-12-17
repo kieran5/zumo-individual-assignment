@@ -130,4 +130,4 @@ GButton completeBtn;
 GButton roomBtn; 
 GButton corridorBtn; 
 GButton endBtn; 
-GButton reverseBtn; 
+GButton reverseBtn;

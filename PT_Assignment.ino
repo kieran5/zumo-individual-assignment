@@ -50,7 +50,7 @@ void loop() {
     // Make Zumo go forward with border detection
     if(valFromGUI == "W") {
       Serial.println("W received by Zumo!");
-      
+
       // Checks if first time 'W' pressed
       if(!firstTimeWPressed) {
         playCountdown();
