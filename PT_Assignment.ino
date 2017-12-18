@@ -25,7 +25,94 @@ ZumoMotors motors;
 #define NUM_SENSORS 6
 unsigned int sensor_values[NUM_SENSORS];
 
+
 boolean firstTimeWPressed = false;
+
+// Initialise corridor and room ID variables
+// corridorID starts at 1 as the Zumo will start in a corridor (ID = 1)
+// Zumo will not be in a room until it comes across one though, hence starting on 0
+// These variables are needed to that the class instances are able to increment their ID's
+int initCorridorID = 1;
+int initRoomID = 0;
+
+// Initialise current corridor variable - allows Zumo to always knows what corridor it is in
+int currentCorridor = 0;
+
+class Corridor {
+  private:
+    int id;
+    char corridorSide;
+
+  public:
+    Corridor();
+    int getID();
+    void setSide(char);
+    char getSide();
+};
+
+Corridor::Corridor() {
+  id = initCorridorID;
+  corridorSide = 'A';
+}
+
+int Corridor::getID() {
+  return this->id;
+}
+
+void Corridor::setSide(char side) {
+  corridorSide = side; 
+}
+
+char Corridor::getSide() {
+  return this->corridorSide;
+}
+
+class Room {
+  private:
+    int id;
+    char roomSide;
+    int corridorID;
+
+  public:
+    Room();
+    int getID();
+    void setSide(char);
+    char getSide();
+    void setCorridor(int);
+    int getCorridor();
+};
+
+Room::Room() {
+  id = initRoomID;
+  roomSide = 'A';
+}
+
+int Room::getID() {
+  return this->id;
+}
+
+void Room::setSide(char side) {
+  roomSide = side; 
+}
+
+char Room::getSide() {
+  return this->roomSide;
+}
+
+void Room::setCorridor(int id) {
+  corridorID = id;
+}
+
+int Room::getCorridor() {
+  return this->corridorID;
+}
+
+// Intialise object arrays to store each instance of a room or corridor that is create
+// We can quickly access these arrays to get data for any particular room or corridor
+// TODO: Move away from using arrays and make use of a collection of some form (vectors, lists?)
+Room rooms[10];
+Corridor corridors[10];
+
 
 void setup() {
     // Initialise the reflectance sensors module
@@ -39,6 +126,10 @@ void setup() {
 
     // Call method to create initial connection to GUI
     establishConnectionToGUI();
+
+    // Zumo will start in a corridor, will create this first corridor instance and store in array
+    corridors[initCorridorID] = Corridor::Corridor();
+    currentCorridor = corridors[initCorridorID].getID();
 }
 
 void loop() {
@@ -57,6 +148,7 @@ void loop() {
         goForwardWithBorderDetectUntilCornerReached();
         firstTimeWPressed = true;         
       }
+      // If not first time 'W' pressed, this control will just be used for manual forward control
       else {
         motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
         delay(FORWARD_DURATION);
@@ -64,7 +156,7 @@ void loop() {
       }
     }
 
-    // Turn Zumo left 90 degrees (maybe change this to incrementally?)
+    // Turn Zumo to left (good idea to change this to 90 degree turn?)
     if(valFromGUI == "A") {
       Serial.println("A received by Zumo!");
       motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
@@ -79,7 +171,7 @@ void loop() {
       
     }
 
-    // Turn Zumo right 90 degrees (maybe change this to incrementally?)
+    // Turn Zumo to right (good idea to change this to 90 degree turn?)
     if(valFromGUI == "D") {
       Serial.println("D received by Zumo!");    
       motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
@@ -106,19 +198,64 @@ void loop() {
     // Signal that a room is about to be entered
     if(valFromGUI == "Ro") {
       Serial.println("Ro received by Zumo!");
+
+      // Increment room ID variable to assign new room with own unique ID
+      ++initRoomID;
+      rooms[initRoomID] = Room::Room();
+      
       // Tell zumo whether room is on left or right of it
-      if(valFromGUI == "L") {
+      Serial.println("Is the room on the left or right?");
+      char side = Serial.read();
+      // Wait until user has picked left or right before setting on object
+      // Then continuing to display message to the user of what they have selected
+      while(side != 'L' || side != 'R') { 
+        side = Serial.read();
         
+        if(side == 'L') {
+          rooms[initRoomID].setSide('L');
+          break;                        
+        }
+        if(side == 'R') {
+          rooms[initRoomID].setSide('R');  
+          break;      
+        }    
       }
 
-      if(valFromGUI == "R") {
-        
-      }
+      // Set the current corridor of the room entered so Zumo remembers where it is on the course
+      rooms[initRoomID].setCorridor(currentCorridor);
+            
+      Serial.println("New room about to be entered on " + String(rooms[initRoomID].getSide()) + " in corridor " + String(rooms[initRoomID].getCorridor()) + " - Room ID: " + String(rooms[initRoomID].getID())); 
     }
 
     // Signal that a side-corridor is about to be entered
     if(valFromGUI == "Co") {
       Serial.println("Co received by Zumo!");
+
+      // Increment corridor ID variable to assign new corridor with own unique ID
+      ++initCorridorID;
+      corridors[initCorridorID] = Corridor::Corridor();
+
+      // Update current corridor variable so Zumo knows where it is
+      currentCorridor = corridors[initCorridorID].getID();
+      
+      // Tell zumo whether corridor is on left or right of it
+      Serial.println("Is the corridor on the left or right?");
+      char side = Serial.read();
+      // Wait until user has picked left or right before setting on object
+      // Then continuing to display message to the user of what they have selected
+      while(side != 'L' || side != 'R') {
+        side = Serial.read();
+        
+        if(side == 'L') {
+          corridors[initCorridorID].setSide('L');
+          break;                        
+        }
+        if(side == 'R') {
+          corridors[initCorridorID].setSide('R');  
+          break;      
+        }    
+      }      
+      Serial.println("New corridor about to be entered on " + String(corridors[initCorridorID].getSide()) + " - Corridor ID: " + String(corridors[initCorridorID].getID()));
       
     }
 

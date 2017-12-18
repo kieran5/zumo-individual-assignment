@@ -63,6 +63,16 @@ public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn
   port.write("Rev");
 } //_CODE_:reverseBtn:312950:
 
+public void leftBtn_click(GButton source, GEvent event) { //_CODE_:leftBtn:856338:
+  println("leftBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write('L');
+} //_CODE_:leftBtn:856338:
+
+public void rightBtn_click(GButton source, GEvent event) { //_CODE_:rightBtn:338386:
+  println("rightBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write('R');
+} //_CODE_:rightBtn:338386:
+
 
 
 // Create all the GUI controls. 
@@ -116,6 +126,14 @@ public void createGUI(){
   reverseBtn.setText("Reverse");
   reverseBtn.setTextBold();
   reverseBtn.addEventHandler(this, "reverseBtn_click");
+  leftBtn = new GButton(this, 277, 120, 80, 30);
+  leftBtn.setText("Left");
+  leftBtn.setTextBold();
+  leftBtn.addEventHandler(this, "leftBtn_click");
+  rightBtn = new GButton(this, 374, 120, 80, 30);
+  rightBtn.setText("Right");
+  rightBtn.setTextBold();
+  rightBtn.addEventHandler(this, "rightBtn_click");
 }
 
 // Variable declarations 
@@ -130,4 +148,6 @@ GButton completeBtn;
 GButton roomBtn; 
 GButton corridorBtn; 
 GButton endBtn; 
-GButton reverseBtn;
+GButton reverseBtn; 
+GButton leftBtn; 
+GButton rightBtn; 
