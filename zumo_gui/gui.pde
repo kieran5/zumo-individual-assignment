@@ -58,20 +58,25 @@ public void endBtn_click(GButton source, GEvent event) { //_CODE_:endBtn:377588:
   port.write("E");
 } //_CODE_:endBtn:377588:
 
-public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn:312950:
+public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn:406475:
   println("reverseBtn - GButton >> GEvent." + event + " @ " + millis());
   port.write("Rev");
-} //_CODE_:reverseBtn:312950:
+} //_CODE_:reverseBtn:406475:
 
-public void leftBtn_click(GButton source, GEvent event) { //_CODE_:leftBtn:856338:
+public void leftBtn_click(GButton source, GEvent event) { //_CODE_:leftBtn:233461:
   println("leftBtn - GButton >> GEvent." + event + " @ " + millis());
   port.write('L');
-} //_CODE_:leftBtn:856338:
+} //_CODE_:leftBtn:233461:
 
-public void rightBtn_click(GButton source, GEvent event) { //_CODE_:rightBtn:338386:
+public void rightBtn_click(GButton source, GEvent event) { //_CODE_:rightBtn:882484:
   println("rightBtn - GButton >> GEvent." + event + " @ " + millis());
   port.write('R');
-} //_CODE_:rightBtn:338386:
+} //_CODE_:rightBtn:882484:
+
+public void scanRoomBtn_click(GButton source, GEvent event) { //_CODE_:scanRoomBtn:298768:
+  println("scanRoomBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("Scan");
+} //_CODE_:scanRoomBtn:298768:
 
 
 
@@ -122,15 +127,19 @@ public void createGUI(){
   endBtn.setText("End ofTrack");
   endBtn.setTextBold();
   endBtn.addEventHandler(this, "endBtn_click");
-  reverseBtn = new GButton(this, 173, 14, 57, 28);
+  scanRoomBtn = new GButton(this, 320, 156, 92, 32);
+  scanRoomBtn.setText("Scan Room");
+  scanRoomBtn.setTextBold();
+  scanRoomBtn.addEventHandler(this, "scanRoomBtn_click");
+  reverseBtn = new GButton(this, 76, 133, 72, 26);
   reverseBtn.setText("Reverse");
   reverseBtn.setTextBold();
   reverseBtn.addEventHandler(this, "reverseBtn_click");
-  leftBtn = new GButton(this, 277, 120, 80, 30);
+  leftBtn = new GButton(this, 276, 119, 80, 30);
   leftBtn.setText("Left");
   leftBtn.setTextBold();
   leftBtn.addEventHandler(this, "leftBtn_click");
-  rightBtn = new GButton(this, 374, 120, 80, 30);
+  rightBtn = new GButton(this, 373, 119, 80, 30);
   rightBtn.setText("Right");
   rightBtn.setTextBold();
   rightBtn.addEventHandler(this, "rightBtn_click");
@@ -148,6 +157,7 @@ GButton completeBtn;
 GButton roomBtn; 
 GButton corridorBtn; 
 GButton endBtn; 
+GButton scanRoomBtn; 
 GButton reverseBtn; 
 GButton leftBtn; 
 GButton rightBtn; 
