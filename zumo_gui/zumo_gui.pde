@@ -59,6 +59,21 @@ void serialEvent(Serial port) {
         }
       }
       else {
+        
+        // Handles disable button messages from Arduino to allow us to
+        // disable left or right turns on exit of sub-corridor
+        if(incomingVal.equals("Disable_RightTurn")) {
+          dBtn.setEnabled(false);            
+        }
+        else if(incomingVal.equals("Disable_LeftTurn")) {
+          aBtn.setEnabled(false);            
+        }
+        else if(incomingVal.equals("C received by Zumo!")) {
+          dBtn.setEnabled(true);
+          aBtn.setEnabled(true);
+        }
+          
+        
         // Update text area with response from Zumo
         responseTextArea.setText(incomingVal);     
       

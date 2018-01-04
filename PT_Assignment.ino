@@ -18,6 +18,9 @@
 #define TURN_DURATION     200
 #define FORWARD_DURATION  100
 
+#define TURN_180_SPEED         370
+#define TURN_180_DURATION      370
+
 ZumoBuzzer buzzer;
 ZumoReflectanceSensorArray reflectanceSensors(QTR_NO_EMITTER_PIN);
 ZumoMotors motors;
@@ -30,7 +33,8 @@ unsigned int sensor_values[NUM_SENSORS];
 const int trigPin = 2;
 const int echoPin = 6;
 
-
+// Initialise boolean to check if W button press is first in the current run
+// Allows user to get Zumo off of start line without need of an additional button
 boolean firstTimeWPressed = false;
 
 // Initialise corridor and room ID variables
@@ -46,16 +50,25 @@ int currentCorridor = 0;
 // Initialise variable to check when an object is detected in a room
 bool objectFound = false;
 
+// Check whether 180 turn has been made at end of sub corridor or end of track
+bool turnComplete = false;
+
 class Corridor {
   private:
     int id;
     char corridorSide;
+    bool subCorridorFlag;
+    int previousCorridorID;
 
   public:
     Corridor();
     int getID();
     void setSide(char);
     char getSide();
+    void setSubCorridorFlag();
+    bool getSubCorridorFlag();
+    void setPreviousCorridorID(int);
+    int getPreviousCorridorID();
 };
 
 Corridor::Corridor() {
@@ -73,6 +86,22 @@ void Corridor::setSide(char side) {
 
 char Corridor::getSide() {
   return this->corridorSide;
+}
+
+void Corridor::setSubCorridorFlag() {
+  subCorridorFlag = true;  
+}
+
+bool Corridor::getSubCorridorFlag() {
+  return this->subCorridorFlag;  
+}
+
+void Corridor::setPreviousCorridorID(int id) {
+  previousCorridorID = id;
+}
+
+int Corridor::getPreviousCorridorID() {
+  return this->previousCorridorID;
 }
 
 class Room {
@@ -201,17 +230,21 @@ void loop() {
     // Reverse control for Zumo - in case needed when turning corners under human control
     if(valFromGUI == "Rev") {
       Serial.println("Rev received by Zumo!");
-      motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+      /*motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
       delay(REVERSE_DURATION);
+      motors.setSpeeds(0, 0);*/
+
+      // Do 180 degree turn
+      motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+      delay(TURN_180_DURATION);
       motors.setSpeeds(0, 0);
+
     }
 
     // Signal that Zumo has completed turn and can carry on forward
     if(valFromGUI == "C") {
       Serial.println("C received by Zumo!");
-      goForwardWithBorderDetectUntilCornerReached();        
-      
-      motors.setSpeeds(0, 0);  
+      goForwardWithBorderDetectUntilCornerReached();
     }
 
     // Signal that a room is about to be entered
@@ -250,12 +283,17 @@ void loop() {
     if(valFromGUI == "Co") {
       Serial.println("Co received by Zumo!");
 
+      int prevCorridorID = initCorridorID;
+
       // Increment corridor ID variable to assign new corridor with own unique ID
       ++initCorridorID;
       corridors[initCorridorID] = Corridor::Corridor();
 
       // Update current corridor variable so Zumo knows where it is
       currentCorridor = corridors[initCorridorID].getID();
+
+      // Set previous corridor ID so Zumo can keep this in memory for when it exits back on to previous corridor
+      corridors[initCorridorID].setPreviousCorridorID(prevCorridorID);
       
       // Tell zumo whether corridor is on left or right of it
       Serial.println("Is the corridor on the left or right?");
@@ -275,12 +313,30 @@ void loop() {
         }    
       }      
       Serial.println("New corridor about to be entered on " + String(corridors[initCorridorID].getSide()) + " - Corridor ID: " + String(corridors[initCorridorID].getID()));
+
+      // Turn on sub corridor flag so Zumo knows this new corridor is a sub corridor
+      corridors[initCorridorID].setSubCorridorFlag();
       
     }
 
     // Scan room button implemented so scan can take place after user has moved Zumo in to room
     if(valFromGUI == "Scan") {
       performRoomScan();
+    }
+
+    // Signal end of sub corridor has been reached so Zumo can turn around and exit
+    if(valFromGUI == "EndSub") {
+      // Do 180 degree turn
+      motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+      delay(TURN_180_DURATION);
+      motors.setSpeeds(0, 0);
+
+      turnComplete = true;
+
+      delay(5000);
+      
+      goForwardWithBorderDetectUntilCornerReached();    
+            
     }
 
     // Signal that the end of the track has been reached
@@ -317,8 +373,7 @@ void goForwardWithBorderDetectUntilCornerReached() {
           stopPressed = true;
           break;
         }
-        
-        
+             
         Serial.println("Sensor value 0: " + String(sensor_values[0]));
         Serial.println("Sensor value 5: " + String(sensor_values[5]));
 
@@ -353,6 +408,35 @@ void goForwardWithBorderDetectUntilCornerReached() {
       // If else statement to check what message to display to user on GUI
       if(stopPressed) {
         Serial.println("Zumo stopped by user.");        
+      }
+      else if(corridors[initCorridorID].getSubCorridorFlag()) {        
+        // Checks if Zumo has already completed its 180 turn or not
+        // If it hasn't, it is reaching the end of the sub corridor
+        if(!turnComplete) {
+          Serial.println("Zumo has reached the end of the sub corridor");          
+        }
+        else {
+          // Get sub corridors side it was entered on
+          // It will need to turn the same way out of the sub corridor to continue its search 
+          char wayToTurn = corridors[currentCorridor].getSide();
+
+          // Set current corridor back to previous corridor as Zumo will now have exited back on to this corridor
+          currentCorridor = corridors[currentCorridor].getPreviousCorridorID();
+
+          // Sends a message to GUI to disable one of the turn buttons
+          if(wayToTurn == 'L') {
+            Serial.println("Disable_RightTurn");
+          }
+          else if(wayToTurn == 'R') {
+            Serial.println("Disable_LeftTurn");
+          }
+
+          Serial.println("Zumo has exited the sub corridor and can now only turn " + String(wayToTurn) + " on to corridor " + String(currentCorridor));
+
+          // Return turn complete boolean flag back to false ready for next sub corridor to use
+          turnComplete = false;
+        }
+        
       }
       else {
         // Send message that a corner has been reached to GUI     
