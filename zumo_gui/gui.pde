@@ -58,6 +58,11 @@ public void endBtn_click(GButton source, GEvent event) { //_CODE_:endBtn:377588:
   port.write("E");
 } //_CODE_:endBtn:377588:
 
+public void scanRoomBtn_click(GButton source, GEvent event) { //_CODE_:scanRoomBtn:298768:
+  println("scanRoomBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("Scan");
+} //_CODE_:scanRoomBtn:298768:
+
 public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn:406475:
   println("reverseBtn - GButton >> GEvent." + event + " @ " + millis());
   port.write("Rev");
@@ -73,10 +78,10 @@ public void rightBtn_click(GButton source, GEvent event) { //_CODE_:rightBtn:882
   port.write('R');
 } //_CODE_:rightBtn:882484:
 
-public void scanRoomBtn_click(GButton source, GEvent event) { //_CODE_:scanRoomBtn:298768:
-  println("scanRoomBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("Scan");
-} //_CODE_:scanRoomBtn:298768:
+public void endSubCorridorBtn_click(GButton source, GEvent event) { //_CODE_:endSubCorridorBtn:237230:
+  println("endSubCorridorBtn - GButton >> GEvent." + event + " @ " + millis());
+  port.write("EndSub");
+} //_CODE_:endSubCorridorBtn:237230:
 
 
 
@@ -123,8 +128,8 @@ public void createGUI(){
   corridorBtn.setText("Corridor");
   corridorBtn.setTextBold();
   corridorBtn.addEventHandler(this, "corridorBtn_click");
-  endBtn = new GButton(this, 13, 285, 102, 30);
-  endBtn.setText("End ofTrack");
+  endBtn = new GButton(this, 16, 276, 102, 30);
+  endBtn.setText("End of Track");
   endBtn.setTextBold();
   endBtn.addEventHandler(this, "endBtn_click");
   scanRoomBtn = new GButton(this, 320, 156, 92, 32);
@@ -143,6 +148,10 @@ public void createGUI(){
   rightBtn.setText("Right");
   rightBtn.setTextBold();
   rightBtn.addEventHandler(this, "rightBtn_click");
+  endSubCorridorBtn = new GButton(this, 15, 237, 103, 31);
+  endSubCorridorBtn.setText("End of Sub Corridor");
+  endSubCorridorBtn.setTextBold();
+  endSubCorridorBtn.addEventHandler(this, "endSubCorridorBtn_click");
 }
 
 // Variable declarations 
@@ -161,3 +170,4 @@ GButton scanRoomBtn;
 GButton reverseBtn; 
 GButton leftBtn; 
 GButton rightBtn; 
+GButton endSubCorridorBtn; 
