@@ -192,11 +192,11 @@ void setup() {
 void loop() {  
   // Check if there is any input detected from GUI
   if(Serial.available() > 0) {
-    String valFromGUI = Serial.readString();
+    char valFromGUI = Serial.read();
     
 
     // Make Zumo go forward with border detection
-    if(valFromGUI == "W") {
+    if(valFromGUI == 'W') {
       Serial.println("W received by Zumo!");
       
       // Checks if first time 'W' pressed
@@ -214,14 +214,14 @@ void loop() {
     }
 
     // Turn Zumo to left slowly until stopped by user
-    if(valFromGUI == "A") {
+    if(valFromGUI == 'A') {
       Serial.println("A received by Zumo!");
 
       // Set start time so Zumo is able to calculate duration of turn
       unsigned long startTime = millis();
 
       // Reading serial point waiting for user to press stop when the Zumo has turned enough
-      while(Serial.readString() != "S") {
+      while(Serial.read() != 'S') {
         motors.setSpeeds(-TURN_SPEED, TURN_SPEED);          
       }
 
@@ -232,21 +232,21 @@ void loop() {
     }
 
     // Stop Zumo (for when you reach a room or side-corridor)
-    if(valFromGUI == "S") {
+    if(valFromGUI == 'S') {
       Serial.println("S received by Zumo!");
       motors.setSpeeds(0, 0);
       
     }
 
     // Turn Zumo to right (good idea to change this to 90 degree turn?)
-    if(valFromGUI == "D") {
+    if(valFromGUI == 'D') {
       Serial.println("D received by Zumo!");
 
       // Set start time so Zumo is able to calculate duration of turn
       unsigned long startTime = millis();
 
       // Reading serial point waiting for user to press stop when the Zumo has turned enough
-      while(Serial.readString() != "S") {
+      while(Serial.read() != 'S') {
         motors.setSpeeds(TURN_SPEED, -TURN_SPEED);          
       }
 
@@ -257,7 +257,7 @@ void loop() {
     }
 
     // Reverse control for Zumo - in case needed when turning corners under human control
-    if(valFromGUI == "Rev") {
+    if(valFromGUI == 'X') {
       Serial.println("Rev received by Zumo!");
       motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
       delay(REVERSE_DURATION);
@@ -266,13 +266,13 @@ void loop() {
     }
 
     // Signal that Zumo has completed turn and can carry on forward
-    if(valFromGUI == "C") {
+    if(valFromGUI == 'C') {
       Serial.println("C received by Zumo!");
       goForwardWithBorderDetectUntilCornerReached();
     }
 
     // Signal that a room is about to be entered
-    if(valFromGUI == "Ro") {
+    if(valFromGUI == 'N') {
       Serial.println("Ro received by Zumo!");
 
       // Increment room count variable to assign new room with own unique ID
@@ -304,7 +304,7 @@ void loop() {
     }
 
     // Signal that a side-corridor is about to be entered
-    if(valFromGUI == "Co") {
+    if(valFromGUI == 'M') {
       Serial.println("Co received by Zumo!");
 
       // Take note of previous corridor ID so new corridor can record this information for use when new corridor is exited again
@@ -345,13 +345,13 @@ void loop() {
     }
 
     // Scan room button implemented so scan can take place after user has moved Zumo in to room
-    if(valFromGUI == "Scan") {
+    if(valFromGUI == 'B') {
       // Zumo will scan entire room for people by sweeping both left and right with ultra sonic sensor running
       performRoomScan();
     }
 
     // Signal end of sub corridor has been reached so Zumo can turn around and exit
-    if(valFromGUI == "EndSub") {
+    if(valFromGUI == 'Q') {
       // Do 180 degree turn
       motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
       delay(TURN_180_DURATION);
@@ -366,7 +366,7 @@ void loop() {
     }
 
     // Signal that the end of the track has been reached
-    if(valFromGUI == "E") {
+    if(valFromGUI == 'E') {
       Serial.println("E received by Zumo!");
     }
   }  

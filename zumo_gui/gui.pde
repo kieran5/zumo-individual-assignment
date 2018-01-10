@@ -16,22 +16,22 @@
 
 public void wBtn_click(GButton source, GEvent event) { //_CODE_:wBtn:471796:
   println("wBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("W");
+  port.write('W');
 } //_CODE_:wBtn:471796:
 
 public void aBtn_click(GButton source, GEvent event) { //_CODE_:aBtn:529102:
   println("aBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("A");
+  port.write('A');
 } //_CODE_:aBtn:529102:
 
 public void sBtn_click(GButton source, GEvent event) { //_CODE_:sBtn:487489:
   println("sBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("S");
+  port.write('S');
 } //_CODE_:sBtn:487489:
 
 public void dBtn_click(GButton source, GEvent event) { //_CODE_:dBtn:325743:
   println("dBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("D");
+  port.write('D');
 } //_CODE_:dBtn:325743:
 
 public void responseTxt_change(GTextArea source, GEvent event) { //_CODE_:responseTextArea:801252:
@@ -40,32 +40,32 @@ public void responseTxt_change(GTextArea source, GEvent event) { //_CODE_:respon
 
 public void completeBtn_click(GButton source, GEvent event) { //_CODE_:completeBtn:917622:
   println("completeBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("C");
+  port.write('C');
 } //_CODE_:completeBtn:917622:
 
 public void roomBtn_click(GButton source, GEvent event) { //_CODE_:roomBtn:562327:
   println("roomBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("Ro");
+  port.write('N');
 } //_CODE_:roomBtn:562327:
 
 public void corridorBtn_click(GButton source, GEvent event) { //_CODE_:corridorBtn:589553:
   println("corridorBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("Co");
+  port.write('M');
 } //_CODE_:corridorBtn:589553:
 
 public void endBtn_click(GButton source, GEvent event) { //_CODE_:endBtn:377588:
   println("endBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("E");
+  port.write('E');
 } //_CODE_:endBtn:377588:
 
 public void scanRoomBtn_click(GButton source, GEvent event) { //_CODE_:scanRoomBtn:298768:
   println("scanRoomBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("Scan");
+  port.write('B');
 } //_CODE_:scanRoomBtn:298768:
 
 public void reverseBtn_click(GButton source, GEvent event) { //_CODE_:reverseBtn:406475:
   println("reverseBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("Rev");
+  port.write('X');
 } //_CODE_:reverseBtn:406475:
 
 public void leftBtn_click(GButton source, GEvent event) { //_CODE_:leftBtn:233461:
@@ -80,7 +80,7 @@ public void rightBtn_click(GButton source, GEvent event) { //_CODE_:rightBtn:882
 
 public void endSubCorridorBtn_click(GButton source, GEvent event) { //_CODE_:endSubCorridorBtn:237230:
   println("endSubCorridorBtn - GButton >> GEvent." + event + " @ " + millis());
-  port.write("EndSub");
+  port.write('Q');
 } //_CODE_:endSubCorridorBtn:237230:
 
 
