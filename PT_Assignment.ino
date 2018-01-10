@@ -5,6 +5,15 @@
 #include <ZumoBuzzer.h>
 #include <Pushbutton.h>
 
+// Includes for standard C++ STL required for use of vectors (https://github.com/maniacbug/StandardCplusplus)
+#include <StandardCplusplus.h>
+#include <serstream>
+#include <string>
+#include <vector>
+#include <iterator>
+
+using namespace std;
+
 #define LED_PIN 13
 
 // this might need to be tuned for different lighting conditions, surfaces, etc.
@@ -37,18 +46,15 @@ const int echoPin = 6;
 // Allows user to get Zumo off of start line without need of an additional button
 boolean firstTimeWPressed = false;
 
-// Initialise corridor and room ID variables
+// Initialise corridor and room count variables
 // corridorID starts at 1 as the Zumo will start in a corridor (ID = 1)
 // Zumo will not be in a room until it comes across one though, hence starting on 0
 // These variables are needed so that the class instances are able to increment their ID's
-int initCorridorID = 1;
-int initRoomID = 0;
+int corridorCount = 1;
+int roomCount = 0;
 
 // Initialise current corridor variable - allows Zumo to always knows what corridor it is in
 int currentCorridor = 0;
-
-// Initialise variable to check when an object is detected in a room
-bool objectFound = false;
 
 // Check whether 180 turn has been made at end of sub corridor or end of track
 bool turnComplete = false;
@@ -72,8 +78,9 @@ class Corridor {
 };
 
 Corridor::Corridor() {
-  id = initCorridorID;
+  id = corridorCount;
   corridorSide = 'A';
+  subCorridorFlag = false;
 }
 
 int Corridor::getID() {
@@ -93,7 +100,7 @@ void Corridor::setSubCorridorFlag() {
 }
 
 bool Corridor::getSubCorridorFlag() {
-  return this->subCorridorFlag;  
+  return this->subCorridorFlag;
 }
 
 void Corridor::setPreviousCorridorID(int id) {
@@ -118,13 +125,14 @@ class Room {
     char getSide();
     void setCorridor(int);
     int getCorridor();
-    void setObjectFound();
+    void setObjectFound(bool);
     bool getObjectFound();
 };
 
 Room::Room() {
-  id = initRoomID;
+  id = roomCount;
   roomSide = 'A';
+  objectFound = false;
 }
 
 int Room::getID() {
@@ -147,19 +155,20 @@ int Room::getCorridor() {
   return this->corridorID;
 }
 
-void Room::setObjectFound() {
-  objectFound = true;
+void Room::setObjectFound(bool found) {
+  objectFound = found;
 }
 
 bool Room::getObjectFound() {
   return this->objectFound;
 }
 
-// Intialise object arrays to store each instance of a room or corridor that is create
-// We can quickly access these arrays to get data for any particular room or corridor
-// TODO: Move away from using arrays and make use of a collection of some form (vectors, lists?)
-Room rooms[10];
-Corridor corridors[10];
+// Intialise vectors for storing each instance of a room or corridor that is created
+// We can quickly access these vectors to get data for any particular room or corridor
+// Use of vectors allows ease of use for task 5 as we can read through the vectors from 
+// last element backwards until we get back to the start of the track
+std::vector<Room> rooms;
+std::vector<Corridor> corridors;
 
 
 void setup() {
@@ -175,9 +184,9 @@ void setup() {
     // Call method to create initial connection to GUI
     establishConnectionToGUI();
 
-    // Zumo will start in a corridor, will create this first corridor instance and store in array
-    corridors[initCorridorID] = Corridor::Corridor();
-    currentCorridor = corridors[initCorridorID].getID();
+    // Zumo will start in a corridor, will create this first corridor instance and store in vector
+    corridors.push_back(Corridor::Corridor());
+    currentCorridor = corridors.back().getID();
 }
 
 void loop() {  
@@ -230,13 +239,8 @@ void loop() {
     // Reverse control for Zumo - in case needed when turning corners under human control
     if(valFromGUI == "Rev") {
       Serial.println("Rev received by Zumo!");
-      /*motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+      motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
       delay(REVERSE_DURATION);
-      motors.setSpeeds(0, 0);*/
-
-      // Do 180 degree turn
-      motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
-      delay(TURN_180_DURATION);
       motors.setSpeeds(0, 0);
 
     }
@@ -251,9 +255,9 @@ void loop() {
     if(valFromGUI == "Ro") {
       Serial.println("Ro received by Zumo!");
 
-      // Increment room ID variable to assign new room with own unique ID
-      ++initRoomID;
-      rooms[initRoomID] = Room::Room();
+      // Increment room count variable to assign new room with own unique ID
+      ++roomCount;
+      rooms.push_back(Room::Room());
       
       // Tell zumo whether room is on left or right of it
       Serial.println("Is the room on the left or right?");
@@ -264,36 +268,37 @@ void loop() {
         side = Serial.read();
         
         if(side == 'L') {
-          rooms[initRoomID].setSide('L');
+          rooms.back().setSide('L');
           break;                        
         }
         if(side == 'R') {
-          rooms[initRoomID].setSide('R');  
+          rooms.back().setSide('R');  
           break;      
         }    
       }
 
       // Set the current corridor of the room entered so Zumo remembers where it is on the course
-      rooms[initRoomID].setCorridor(currentCorridor);
+      rooms.back().setCorridor(currentCorridor);
             
-      Serial.println("New room about to be entered on " + String(rooms[initRoomID].getSide()) + " in corridor " + String(rooms[initRoomID].getCorridor()) + " - Room ID: " + String(rooms[initRoomID].getID()));
+      Serial.println("New room about to be entered on " + String(rooms.back().getSide()) + " in corridor " + String(rooms.back().getCorridor()) + " - Room ID: " + String(rooms.back().getID()));
     }
 
     // Signal that a side-corridor is about to be entered
     if(valFromGUI == "Co") {
       Serial.println("Co received by Zumo!");
 
-      int prevCorridorID = initCorridorID;
+      // Take note of previous corridor ID so new corridor can record this information for use when new corridor is exited again
+      int prevCorridorID = currentCorridor;
 
-      // Increment corridor ID variable to assign new corridor with own unique ID
-      ++initCorridorID;
-      corridors[initCorridorID] = Corridor::Corridor();
+      // Increment corridor count variable to assign new corridor with own unique ID
+      ++corridorCount;
+      corridors.push_back(Corridor::Corridor());
 
       // Update current corridor variable so Zumo knows where it is
-      currentCorridor = corridors[initCorridorID].getID();
+      currentCorridor = corridors.back().getID();
 
       // Set previous corridor ID so Zumo can keep this in memory for when it exits back on to previous corridor
-      corridors[initCorridorID].setPreviousCorridorID(prevCorridorID);
+      corridors.back().setPreviousCorridorID(prevCorridorID);
       
       // Tell zumo whether corridor is on left or right of it
       Serial.println("Is the corridor on the left or right?");
@@ -304,23 +309,24 @@ void loop() {
         side = Serial.read();
         
         if(side == 'L') {
-          corridors[initCorridorID].setSide('L');
+          corridors.back().setSide('L');
           break;                        
         }
         if(side == 'R') {
-          corridors[initCorridorID].setSide('R');  
+          corridors.back().setSide('R');  
           break;      
         }    
       }      
-      Serial.println("New corridor about to be entered on " + String(corridors[initCorridorID].getSide()) + " - Corridor ID: " + String(corridors[initCorridorID].getID()));
+      Serial.println("New corridor about to be entered on " + String(corridors.back().getSide()) + " - Corridor ID: " + String(corridors.back().getID()));
 
       // Turn on sub corridor flag so Zumo knows this new corridor is a sub corridor
-      corridors[initCorridorID].setSubCorridorFlag();
+      corridors.back().setSubCorridorFlag();
       
     }
 
     // Scan room button implemented so scan can take place after user has moved Zumo in to room
     if(valFromGUI == "Scan") {
+      // Zumo will scan entire room for people by sweeping both left and right with ultra sonic sensor running
       performRoomScan();
     }
 
@@ -404,12 +410,14 @@ void goForwardWithBorderDetectUntilCornerReached() {
 
       // Once line in front of Zumo detected - will fall out of while loop and stop motors
       motors.setSpeeds(0, 0);
-
+      
       // If else statement to check what message to display to user on GUI
       if(stopPressed) {
-        Serial.println("Zumo stopped by user.");        
+        Serial.println("Zumo stopped by user.");    
       }
-      else if(corridors[initCorridorID].getSubCorridorFlag()) {        
+      // If Zumo is in a sub corridor
+      // We use 'currentCorridor-1' as vector stores corridor 1 in position 0, corridor 2 in pos 1 etc.
+      else if(corridors[currentCorridor-1].getSubCorridorFlag()) {        
         // Checks if Zumo has already completed its 180 turn or not
         // If it hasn't, it is reaching the end of the sub corridor
         if(!turnComplete) {
@@ -418,10 +426,10 @@ void goForwardWithBorderDetectUntilCornerReached() {
         else {
           // Get sub corridors side it was entered on
           // It will need to turn the same way out of the sub corridor to continue its search 
-          char wayToTurn = corridors[currentCorridor].getSide();
+          char wayToTurn = corridors[currentCorridor-1].getSide();
 
           // Set current corridor back to previous corridor as Zumo will now have exited back on to this corridor
-          currentCorridor = corridors[currentCorridor].getPreviousCorridorID();
+          currentCorridor = corridors[currentCorridor-1].getPreviousCorridorID();
 
           // Sends a message to GUI to disable one of the turn buttons
           if(wayToTurn == 'L') {
@@ -448,7 +456,7 @@ void performRoomScan() {
   // For loop to make Zumo sweep right and scan for objects whilst there is not an object detected
   // Zumo will stop scanning as soon as it finds an object, if one exists
   for(int i = 0; i < 10; i++) {
-    if(!objectFound) {
+    if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
       delay(50);
       motors.setSpeeds(0, 0);
@@ -460,7 +468,7 @@ void performRoomScan() {
 
   // This will make the Zumo sweep back again and out to the left to keep scanning if it's not already found an object
   for(int i = 0; i < 20; i++) {
-    if(!objectFound) {
+    if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
       delay(50);
       motors.setSpeeds(0, 0);
@@ -470,9 +478,8 @@ void performRoomScan() {
   }
 
   // Displays appropriate message to GUI depending on whether it found an object or not
-  if(objectFound) {
-    Serial.println("Room scan complete - Object FOUND in room " + String(rooms[initRoomID].getID()));
-    rooms[initRoomID].setObjectFound();        
+  if(rooms.back().getObjectFound()) {
+    Serial.println("Room scan complete - Object FOUND in room " + String(rooms.back().getID()));        
   }
   else {
     Serial.println("Room scan complete - Object NOT FOUND");
@@ -480,6 +487,8 @@ void performRoomScan() {
 }
 
 void detectObject() {
+  // https://gist.github.com/flakas/3294829
+  
   long duration, cm;
   
   // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
@@ -501,9 +510,8 @@ void detectObject() {
   cm = microsecondsToCentimeters(duration);
 
   // Set to 17cm as room depth is 15cm (added extra 2cm to allow for object being on outer edge of room)
-  if(cm < 17)
-  {
-    objectFound = true;
+  if(cm < 17) {
+    rooms.back().setObjectFound(true);
   }    
 }
 
