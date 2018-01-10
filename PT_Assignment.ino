@@ -213,12 +213,22 @@ void loop() {
       }
     }
 
-    // Turn Zumo to left (good idea to change this to 90 degree turn?)
+    // Turn Zumo to left slowly until stopped by user
     if(valFromGUI == "A") {
       Serial.println("A received by Zumo!");
-      motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
-      delay(TURN_DURATION);
-      motors.setSpeeds(0, 0);                
+
+      // Set start time so Zumo is able to calculate duration of turn
+      unsigned long startTime = millis();
+
+      // Reading serial point waiting for user to press stop when the Zumo has turned enough
+      while(Serial.readString() != "S") {
+        motors.setSpeeds(-TURN_SPEED, TURN_SPEED);          
+      }
+
+      // Stop the Zumo, and calculate duration, ready to store in an object for task 5
+      motors.setSpeeds(0, 0);
+      unsigned long turnDuration = millis() - startTime;      
+      Serial.println("Turn Duration: " + String(turnDuration));
     }
 
     // Stop Zumo (for when you reach a room or side-corridor)
@@ -230,10 +240,20 @@ void loop() {
 
     // Turn Zumo to right (good idea to change this to 90 degree turn?)
     if(valFromGUI == "D") {
-      Serial.println("D received by Zumo!");    
-      motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
-      delay(TURN_DURATION);
-      motors.setSpeeds(0, 0);  
+      Serial.println("D received by Zumo!");
+
+      // Set start time so Zumo is able to calculate duration of turn
+      unsigned long startTime = millis();
+
+      // Reading serial point waiting for user to press stop when the Zumo has turned enough
+      while(Serial.readString() != "S") {
+        motors.setSpeeds(TURN_SPEED, -TURN_SPEED);          
+      }
+
+      // Stop the Zumo, and calculate duration, ready to store in an object for task 5
+      motors.setSpeeds(0, 0);
+      unsigned long turnDuration = millis() - startTime;      
+      Serial.println("Turn Duration: " + String(turnDuration));
     }
 
     // Reverse control for Zumo - in case needed when turning corners under human control
