@@ -21,7 +21,7 @@ using namespace std;
 
 // Speed/duration settings
 #define REVERSE_SPEED     200
-#define TURN_SPEED        200
+#define TURN_SPEED        100
 #define FORWARD_SPEED     200
 #define REVERSE_DURATION  100
 #define TURN_DURATION     200
@@ -59,12 +59,21 @@ int currentCorridor = 0;
 // Check whether 180 turn has been made at end of sub corridor or end of track
 bool turnComplete = false;
 
+
+// Variable used for task 5 to hold duration recorded to be passed to appropriate objects
+// A return journey flag so Zumo knows whether it is working its own way back to the beginning of the course
+unsigned long durationVar = 0;
+bool onReturnJourney = false;
+
 class Corridor {
   private:
     int id;
     char corridorSide;
     bool subCorridorFlag;
     int previousCorridorID;
+    unsigned long turnDuration;
+    unsigned long totalDuration;
+    unsigned long subCorridorDuration;
 
   public:
     Corridor();
@@ -75,12 +84,17 @@ class Corridor {
     bool getSubCorridorFlag();
     void setPreviousCorridorID(int);
     int getPreviousCorridorID();
+    void setTurnDuration(unsigned long);
+    unsigned long getTurnDuration();
+    void addToTotalDuration(unsigned long);
+    unsigned long getTotalDuration();
 };
 
 Corridor::Corridor() {
   id = corridorCount;
   corridorSide = 'A';
   subCorridorFlag = false;
+  totalDuration = 0;
 }
 
 int Corridor::getID() {
@@ -111,12 +125,30 @@ int Corridor::getPreviousCorridorID() {
   return this->previousCorridorID;
 }
 
+void Corridor::setTurnDuration(unsigned long duration) {
+  turnDuration = duration;
+}
+
+unsigned long Corridor::getTurnDuration() {
+  return this->turnDuration;
+}
+
+void Corridor::addToTotalDuration(unsigned long duration) {
+  totalDuration += duration;  
+}
+
+unsigned long Corridor::getTotalDuration() {
+  return this->totalDuration;
+}
+
+
 class Room {
   private:
     int id;
     char roomSide;
     int corridorID;
     bool objectFound;
+    unsigned long duration;
 
   public:
     Room();
@@ -127,6 +159,8 @@ class Room {
     int getCorridor();
     void setObjectFound(bool);
     bool getObjectFound();
+    void setDuration(unsigned long);
+    unsigned long getDuration();
 };
 
 Room::Room() {
@@ -162,6 +196,15 @@ void Room::setObjectFound(bool found) {
 bool Room::getObjectFound() {
   return this->objectFound;
 }
+
+void Room::setDuration(unsigned long duration) {
+  duration = duration;
+}
+
+unsigned long Room::getDuration() {
+  return this->duration;
+}
+
 
 // Intialise vectors for storing each instance of a room or corridor that is created
 // We can quickly access these vectors to get data for any particular room or corridor
@@ -228,7 +271,7 @@ void loop() {
       // Stop the Zumo, and calculate duration, ready to store in an object for task 5
       motors.setSpeeds(0, 0);
       unsigned long turnDuration = millis() - startTime;      
-      Serial.println("Turn Duration: " + String(turnDuration));
+      corridors.back().setTurnDuration(turnDuration);
     }
 
     // Stop Zumo (for when you reach a room or side-corridor)
@@ -238,7 +281,7 @@ void loop() {
       
     }
 
-    // Turn Zumo to right (good idea to change this to 90 degree turn?)
+    // Turn Zumo to right slowly until stopped by user
     if(valFromGUI == 'D') {
       Serial.println("D received by Zumo!");
 
@@ -253,10 +296,10 @@ void loop() {
       // Stop the Zumo, and calculate duration, ready to store in an object for task 5
       motors.setSpeeds(0, 0);
       unsigned long turnDuration = millis() - startTime;      
-      Serial.println("Turn Duration: " + String(turnDuration));
+      corridors.back().setTurnDuration(turnDuration);
     }
 
-    // Reverse control for Zumo - in case needed when turning corners under human control
+    // Reverse control for Zumo - in case needed when Zumo under human control
     if(valFromGUI == 'X') {
       Serial.println("Rev received by Zumo!");
       motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
@@ -268,6 +311,7 @@ void loop() {
     // Signal that Zumo has completed turn and can carry on forward
     if(valFromGUI == 'C') {
       Serial.println("C received by Zumo!");
+      
       goForwardWithBorderDetectUntilCornerReached();
     }
 
@@ -299,6 +343,9 @@ void loop() {
 
       // Set the current corridor of the room entered so Zumo remembers where it is on the course
       rooms.back().setCorridor(currentCorridor);
+
+      // Set duration (milliseconds) between last stop and the new room
+      rooms.back().setDuration(durationVar);
             
       Serial.println("New room about to be entered on " + String(rooms.back().getSide()) + " in corridor " + String(rooms.back().getCorridor()) + " - Room ID: " + String(rooms.back().getID()));
     }
@@ -341,6 +388,9 @@ void loop() {
 
       // Turn on sub corridor flag so Zumo knows this new corridor is a sub corridor
       corridors.back().setSubCorridorFlag();
+
+      // Set duration (milliseconds) between last stop and the new corridor
+      corridors.back().addToTotalDuration(durationVar);
       
     }
 
@@ -368,6 +418,17 @@ void loop() {
     // Signal that the end of the track has been reached
     if(valFromGUI == 'E') {
       Serial.println("E received by Zumo!");
+
+      onReturnJourney = true;
+
+      // TEST OUTPUTS
+      for(int i=0; i < rooms.size(); i++) {
+        Serial.println("Room " + String(rooms[i].getID()) + ": " + String(rooms[i].getDuration()));
+      }
+
+      for(int i=0; i < corridors.size(); i++) {
+        Serial.println("Corridor " + String(corridors[i].getID()) + ": " + String(corridors[i].getTurnDuration()) + " " + String(corridors[i].getTotalDuration()));
+      }
     }
   }  
 }
@@ -389,10 +450,14 @@ void goForwardWithBorderDetectUntilCornerReached() {
 
     // Initialise boolean to check when user manually presses stop
     boolean stopPressed = false;
+
+    // Set start time so Zumo knows when it has started travelling up a corridor
+    // Duration will be captured if it is required and saved to an object
+    unsigned long startTime = millis();
     
     // While line in front of Zumo NOT detected keep running border detect code
     while(!(sensor_values[0] > QTR_THRESHOLD && sensor_values[5] > QTR_THRESHOLD)) {
-        // Go forward with border detect
+        // Go forward with border detect      
 
         // Reading serial point in case user needs to manually stop Zumo & break out of while loop
         if(Serial.read() == 'S') {
@@ -428,12 +493,32 @@ void goForwardWithBorderDetectUntilCornerReached() {
         reflectanceSensors.read(sensor_values);
       }
 
+      // Calculate duration while loop was running so it can be assigned to the appropriate attribuite on the appropriate object
+      unsigned long duration = millis() - startTime;
+
+      // Add duration to total duration of current corridor
+      // This is so Zumo knows how long to go forward on the return journey
+      // We obviously only need to add to this attribute whilst on the initial journey
+      // Also need to make sure duration isn't added to a sub corridor when it is leaving
+      if(!onReturnJourney && !turnComplete) {
+        corridors[currentCorridor-1].addToTotalDuration(duration);        
+      }
+      
+
       // Once line in front of Zumo detected - will fall out of while loop and stop motors
       motors.setSpeeds(0, 0);
       
       // If else statement to check what message to display to user on GUI
       if(stopPressed) {
-        Serial.println("Zumo stopped by user.");    
+        Serial.println("Zumo stopped by user.");
+
+        // Store duration in a duration variable for use when the room or corridor buttons are hit
+        // On a room or corridor button press we will need this duration to store on a sub corridor or room object
+        // This will be used in conjunction with the corridors totalDuration attribute
+        // We will deduct the duration stored on a room or corridor object from the current corridors totalDuration in order
+        // to figure out the duration the Zumo needs to go on its return journey...
+        durationVar = duration;
+        
       }
       // If Zumo is in a sub corridor
       // We use 'currentCorridor-1' as vector stores corridor 1 in position 0, corridor 2 in pos 1 etc.
@@ -468,14 +553,15 @@ void goForwardWithBorderDetectUntilCornerReached() {
       }
       else {
         // Send message that a corner has been reached to GUI     
-        Serial.println("Zumo has reached a corner.");        
+        Serial.println("Zumo has reached a corner.");
+        
       }
 }
 
 void performRoomScan() {
   // For loop to make Zumo sweep right and scan for objects whilst there is not an object detected
   // Zumo will stop scanning as soon as it finds an object, if one exists
-  for(int i = 0; i < 10; i++) {
+  for(int i = 0; i < 20; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
       delay(50);
@@ -487,7 +573,7 @@ void performRoomScan() {
   }
 
   // This will make the Zumo sweep back again and out to the left to keep scanning if it's not already found an object
-  for(int i = 0; i < 20; i++) {
+  for(int i = 0; i < 40; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
       delay(50);
