@@ -21,8 +21,8 @@ using namespace std;
 
 // Speed/duration settings
 #define REVERSE_SPEED     200
-#define TURN_SPEED        100
-#define FORWARD_SPEED     200
+#define TURN_SPEED        75
+#define FORWARD_SPEED     150
 #define REVERSE_DURATION  100
 #define TURN_DURATION     200
 #define FORWARD_DURATION  100
@@ -168,6 +168,7 @@ Room::Room() {
   id = roomCount;
   roomSide = 'A';
   objectFound = false;
+  duration = 0;
 }
 
 int Room::getID() {
@@ -198,8 +199,8 @@ bool Room::getObjectFound() {
   return this->objectFound;
 }
 
-void Room::setDuration(unsigned long duration) {
-  duration = duration;
+void Room::setDuration(unsigned long d) {
+  duration = d;
 }
 
 unsigned long Room::getDuration() {
@@ -444,13 +445,27 @@ void loop() {
       onReturnJourney = true;
 
       // TEST OUTPUTS
-      for(int i=0; i < rooms.size(); i++) {
-        Serial.println("Room " + String(rooms[i].getID()) + ": " + String(rooms[i].getDuration()));
-      }
 
       for(int i=0; i < corridors.size(); i++) {
-        Serial.println("Corridor " + String(corridors[i].getID()) + ": " + String(corridors[i].getTurnDuration()) + " " + String(corridors[i].getTotalDuration()));
+        Serial.println("Corridor " + String(corridors[i].getID())); 
+        Serial.println("Total duration: " + String(corridors[i].getTotalDuration()));
+        Serial.println("Turn duration: " + String(corridors[i].getTurnDuration()));
+        Serial.println("Have to turn " + String(corridors[i].getSide()) + " on to corridor " + String(corridors[i].getPreviousCorridorID()));
+        if(corridors[i].getSubCorridorFlag()) Serial.println("Sub Corridor.");
+        Serial.println();
+        delay(1500);
       }
+      
+      for(int i=0; i < rooms.size(); i++) {
+        Serial.println("Room " + String(rooms[i].getID()));
+        Serial.println("Duration: " + String(rooms[i].getDuration()));
+        Serial.println("On " + String(rooms[i].getSide()) + " of corridor " + String(rooms[i].getCorridor()));
+        if(rooms[i].getObjectFound()) Serial.println("Object found.");
+        Serial.println();
+        delay(1500);
+      }
+
+      
     }
   }  
 }
@@ -521,8 +536,9 @@ void goForwardWithBorderDetectUntilCornerReached() {
       // Add duration to total duration of current corridor
       // This is so Zumo knows how long to go forward on the return journey
       // We obviously only need to add to this attribute whilst on the initial journey
-      // Also need to make sure duration isn't added to a sub corridor when it is leaving (by making use of newCorridorNotRequired flag)
-      if(!onReturnJourney && !newCorridorNotRequired) {
+      // Need to make sure duration isn't added to a sub corridor as we don't care about the total duration of that
+      // Only the duration the sub corridor is down it's parent corridor
+      if(!onReturnJourney && !newCorridorNotRequired && !corridors[currentCorridor-1].getSubCorridorFlag()) {
         corridors[currentCorridor-1].addToTotalDuration(duration);        
       }
       
@@ -540,6 +556,8 @@ void goForwardWithBorderDetectUntilCornerReached() {
         // We will deduct the duration stored on a room or corridor object from the current corridors totalDuration in order
         // to figure out the duration the Zumo needs to go on its return journey...
         durationVar = duration;
+        Serial.println("duration: " + String(duration));
+        Serial.println("durationVar: " + String(durationVar));
         
       }
       // If Zumo is in a sub corridor
