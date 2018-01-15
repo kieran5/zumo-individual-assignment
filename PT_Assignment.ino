@@ -505,6 +505,11 @@ void goForwardWithBorderDetectUntilCornerReached() {
         Serial.println("Sensor value 0: " + String(sensor_values[0]));
         Serial.println("Sensor value 5: " + String(sensor_values[5]));
 
+        // Code to double check the Zumo hasn't hit a corner at an unusual angle
+        if (sensor_values[1] > QTR_THRESHOLD || sensor_values[2] > QTR_THRESHOLD || sensor_values[3] > QTR_THRESHOLD || sensor_values[4] > QTR_THRESHOLD) {
+          break;
+        }
+
         if (sensor_values[0] > QTR_THRESHOLD) {
           // if leftmost sensor detects line, reverse and turn to the right
           motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
@@ -566,7 +571,12 @@ void goForwardWithBorderDetectUntilCornerReached() {
         // Make use of newCorridorNotRequired flag - this flag will only be made true AFTER the turn at end of sub corridor
         // If Zumo hasn't completed its turn, it is reaching the end of the sub corridor
         if(!newCorridorNotRequired) {
-          Serial.println("Zumo has reached the end of the sub corridor");          
+          Serial.println("Zumo has reached the end of the sub corridor");
+
+          // Zumo pulls back quickly to prepare to be turned by user
+          motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+          delay(REVERSE_DURATION);
+          motors.setSpeeds(0, 0);         
         }
         else {
           // Get sub corridors side it was entered on
@@ -585,13 +595,22 @@ void goForwardWithBorderDetectUntilCornerReached() {
           }
 
           Serial.println("Zumo has exited the sub corridor and can now only turn " + String(wayToTurn) + " on to corridor " + String(currentCorridor));
+
+          // Zumo pulls back quickly to prepare to be turned by user
+          motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+          delay(REVERSE_DURATION);
+          motors.setSpeeds(0, 0); 
         }
         
       }
       else {
         // Send message that a corner has been reached to GUI     
         Serial.println("Zumo has reached a corner.");
-        
+
+        // Zumo pulls back quickly to prepare to be turned by user
+        motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+        delay(REVERSE_DURATION);
+        motors.setSpeeds(0, 0);
       }
 }
 
