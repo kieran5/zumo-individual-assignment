@@ -56,8 +56,9 @@ int roomCount = 0;
 // Initialise current corridor variable - allows Zumo to always knows what corridor it is in
 int currentCorridor = 0;
 
-// Check whether 180 turn has been made at end of sub corridor or end of track
-bool turnComplete = false;
+// Boolean value to allow Zumo to know when a new corridor instance is not needed
+// This flag is required due to how the left and right turn buttons work for task 5
+bool newCorridorNotRequired = false;
 
 
 // Variable used for task 5 to hold duration recorded to be passed to appropriate objects
@@ -260,6 +261,18 @@ void loop() {
     if(valFromGUI == 'A') {
       Serial.println("A received by Zumo!");
 
+      // If a Zumo reaches a corner, the user will press A to turn left on to the next so we set 'L' as the corridors side
+      // If it is a sub corridor, it will have already had a side set by a button press
+      // This is why we check for the default value of 'A' below
+      // This check will also prevent the side being changed when users are navigating manually for other reasons as well (moving in/out of room etc.)
+      if(corridors[currentCorridor-1].getSide() == 'A' && !newCorridorNotRequired) {
+        corridors[currentCorridor-1].setSide('L');
+
+        // Create new corridor instance and store in vector
+        createNewCorridor(); 
+        
+      }
+
       // Set start time so Zumo is able to calculate duration of turn
       unsigned long startTime = millis();
 
@@ -284,6 +297,13 @@ void loop() {
     // Turn Zumo to right slowly until stopped by user
     if(valFromGUI == 'D') {
       Serial.println("D received by Zumo!");
+
+      if(corridors[currentCorridor-1].getSide() == 'A' && !newCorridorNotRequired) {
+        corridors[currentCorridor-1].setSide('R');
+
+        // Create new corridor instance and store in vector
+        createNewCorridor();
+      }
 
       // Set start time so Zumo is able to calculate duration of turn
       unsigned long startTime = millis();
@@ -311,6 +331,11 @@ void loop() {
     // Signal that Zumo has completed turn and can carry on forward
     if(valFromGUI == 'C') {
       Serial.println("C received by Zumo!");
+
+      // Return boolean flag back to false ready for next use
+      // If it was set to true, then the user hitting complete will signify that
+      // the corner or room search has been dealt with and it is safe to remove this flag
+      newCorridorNotRequired = false;
       
       goForwardWithBorderDetectUntilCornerReached();
     }
@@ -348,24 +373,19 @@ void loop() {
       rooms.back().setDuration(durationVar);
             
       Serial.println("New room about to be entered on " + String(rooms.back().getSide()) + " in corridor " + String(rooms.back().getCorridor()) + " - Room ID: " + String(rooms.back().getID()));
+
+      // We set this flag to true so that when we use the manual WASD controls to turn the Zumo in to a room, 
+      // we won't activate the new corridor code required for task 5
+      newCorridorNotRequired = true;
+      
     }
 
     // Signal that a side-corridor is about to be entered
     if(valFromGUI == 'M') {
       Serial.println("Co received by Zumo!");
 
-      // Take note of previous corridor ID so new corridor can record this information for use when new corridor is exited again
-      int prevCorridorID = currentCorridor;
-
-      // Increment corridor count variable to assign new corridor with own unique ID
-      ++corridorCount;
-      corridors.push_back(Corridor::Corridor());
-
-      // Update current corridor variable so Zumo knows where it is
-      currentCorridor = corridors.back().getID();
-
-      // Set previous corridor ID so Zumo can keep this in memory for when it exits back on to previous corridor
-      corridors.back().setPreviousCorridorID(prevCorridorID);
+      // Create new corridor instance and store in vector
+      createNewCorridor();
       
       // Tell zumo whether corridor is on left or right of it
       Serial.println("Is the corridor on the left or right?");
@@ -407,7 +427,9 @@ void loop() {
       delay(TURN_180_DURATION);
       motors.setSpeeds(0, 0);
 
-      turnComplete = true;
+      // We need to activate this flag so Zumo knows it will be exiting back on to a corridor
+      // that has already been created
+      newCorridorNotRequired = true;
 
       delay(5000);
       
@@ -499,8 +521,8 @@ void goForwardWithBorderDetectUntilCornerReached() {
       // Add duration to total duration of current corridor
       // This is so Zumo knows how long to go forward on the return journey
       // We obviously only need to add to this attribute whilst on the initial journey
-      // Also need to make sure duration isn't added to a sub corridor when it is leaving
-      if(!onReturnJourney && !turnComplete) {
+      // Also need to make sure duration isn't added to a sub corridor when it is leaving (by making use of newCorridorNotRequired flag)
+      if(!onReturnJourney && !newCorridorNotRequired) {
         corridors[currentCorridor-1].addToTotalDuration(duration);        
       }
       
@@ -523,9 +545,9 @@ void goForwardWithBorderDetectUntilCornerReached() {
       // If Zumo is in a sub corridor
       // We use 'currentCorridor-1' as vector stores corridor 1 in position 0, corridor 2 in pos 1 etc.
       else if(corridors[currentCorridor-1].getSubCorridorFlag()) {        
-        // Checks if Zumo has already completed its 180 turn or not
-        // If it hasn't, it is reaching the end of the sub corridor
-        if(!turnComplete) {
+        // Make use of newCorridorNotRequired flag - this flag will only be made true AFTER the turn at end of sub corridor
+        // If Zumo hasn't completed its turn, it is reaching the end of the sub corridor
+        if(!newCorridorNotRequired) {
           Serial.println("Zumo has reached the end of the sub corridor");          
         }
         else {
@@ -545,9 +567,6 @@ void goForwardWithBorderDetectUntilCornerReached() {
           }
 
           Serial.println("Zumo has exited the sub corridor and can now only turn " + String(wayToTurn) + " on to corridor " + String(currentCorridor));
-
-          // Return turn complete boolean flag back to false ready for next sub corridor to use
-          turnComplete = false;
         }
         
       }
@@ -640,3 +659,19 @@ void playCountdown() {
   buzzer.playNote(NOTE_G(4), 500, 15);  
   delay(1000);
 }
+
+void createNewCorridor() {
+  // Take note of previous corridor ID so new corridor can record this information for use when new corridor is exited again
+  int prevCorridorID = currentCorridor;
+
+  // Increment corridor count variable to assign new corridor with own unique ID
+  ++corridorCount;
+  corridors.push_back(Corridor::Corridor());
+
+  // Update current corridor variable so Zumo knows where it is
+  currentCorridor = corridors.back().getID();
+
+  // Set previous corridor ID so Zumo can keep this in memory for when it exits back on to previous corridor
+  corridors.back().setPreviousCorridorID(prevCorridorID);  
+}
+
