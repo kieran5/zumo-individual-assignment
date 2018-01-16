@@ -4,6 +4,7 @@
 #include <ZumoReflectanceSensorArray.h>
 #include <ZumoBuzzer.h>
 #include <Pushbutton.h>
+#include <NewPing.h>
 
 // Includes for standard C++ STL required for use of vectors (https://github.com/maniacbug/StandardCplusplus)
 #include <StandardCplusplus.h>
@@ -41,6 +42,9 @@ unsigned int sensor_values[NUM_SENSORS];
 // Assign trig and echo pin numbers for ultra sonic sensor
 const int trigPin = 2;
 const int echoPin = 6;
+
+// Initialise NewPing variable for use in room scan function
+NewPing sonar(trigPin, echoPin, 200);
 
 // Initialise boolean to check if W button press is first in the current run
 // Allows user to get Zumo off of start line without need of an additional button
@@ -875,25 +879,24 @@ void goForwardWithBorderDetectUntilCornerReached() {
 void performRoomScan() {
   // For loop to make Zumo sweep right and scan for objects whilst there is not an object detected
   // Zumo will stop scanning as soon as it finds an object, if one exists
-  for(int i = 0; i < 20; i++) {
+  for(int i = 0; i < 5; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
-      delay(50);
+      delay(500);
       motors.setSpeeds(0, 0);
 
-      // Detect object function contains the actual object detection code via the ultra-sonic sensor
-      detectObject();           
+      detectObject();
     }          
   }
 
   // This will make the Zumo sweep back again and out to the left to keep scanning if it's not already found an object
-  for(int i = 0; i < 40; i++) {
+  for(int i = 0; i < 10; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
-      delay(50);
+      delay(500);
       motors.setSpeeds(0, 0);
 
-      detectObject();        
+      detectObject();      
     }          
   }
 
@@ -907,40 +910,16 @@ void performRoomScan() {
 }
 
 void detectObject() {
-  // https://gist.github.com/flakas/3294829
-  
-  long duration, cm;
-  
-  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  pinMode(trigPin, OUTPUT);
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  // Read the signal from the sensor: a HIGH pulse whose
-  // duration is the time (in microseconds) from the sending
-  // of the ping to the reception of its echo off of an object.
-  pinMode(echoPin, INPUT);
-  duration = pulseIn(echoPin, HIGH);
-
-  // convert the time into a distance
-  cm = microsecondsToCentimeters(duration);
-
-  // Set to 17cm as room depth is 15cm (added extra 2cm to allow for object being on outer edge of room)
-  if(cm < 17) {
-    rooms.back().setObjectFound(true);
+  // Every time this function is called, the sensor will ping 10 times before it is moved on to the next position
+  // It will break as soon as a object is found
+  // Set to 20cm to allow for Zumo not being far in to the room and object being on far corner of room (room is 15cm deep)
+  for(int i=0; i < 10; i++) {
+    delay(50);
+    if(sonar.ping_cm() < 20 && sonar.ping_cm() != 0) {
+      rooms.back().setObjectFound(true);
+      break;
+    }
   }
-}
-
-long microsecondsToCentimeters(long microseconds)
-{
-  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
-  // The ping travels out and back, so to find the distance of the
-  // object we take half of the distance travelled.
-  return microseconds / 29 / 2;
 }
 
 void playCountdown() {
