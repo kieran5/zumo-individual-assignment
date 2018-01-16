@@ -465,6 +465,99 @@ void loop() {
         delay(1500);
       }
 
+      // CODE
+      while(!(sensor_values[0] > QTR_THRESHOLD && sensor_values[5] > QTR_THRESHOLD)) {
+        // If next room to be dealt with is on current corridor then continue in to if statement, otherwise it will be a sub corridor coming up next
+        if(rooms.back().getCorridor() == corridors[currentCorridor].getID()) {
+          // If the room had an object in it, we need to check it on the way back to check if the person has now been saved
+          if(rooms.back().getObjectFound()) {
+            // Calculate duration to travel to last room on last corridor and stop
+            unsigned long duration = corridors.back().getTotalDuration();
+            duration -= rooms.back().getDuration();
+            motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+            delay(duration);
+            motors.setSpeeds(0, 0);
+        
+            // Once robot reaches room, turn it in to room ready to scan
+            if(rooms.back().getSide() == 'L') {
+              // Turn robot right
+              
+            }
+            else {
+              // Turn robot left
+              
+            }
+        
+            // Scan room
+            performRoomScan();                    
+            
+            // If object still found then turn on led and send message to GUI
+            if(rooms.back().getObjectFound()) {
+              Serial.println("Person still awaiting rescue in room " + String(rooms.back().getID()) + ". FOLLOW ME!");
+
+              // Flash LED twice before leaving on for person in need to follow
+              digitalWrite(LED_PIN, HIGH);
+              digitalWrite(LED_PIN, LOW);
+              digitalWrite(LED_PIN, HIGH);
+              digitalWrite(LED_PIN, LOW);
+              digitalWrite(LED_PIN, HIGH);
+            }
+        
+        
+            // Turn back out
+            if(rooms.back().getSide() == 'L') {
+              // Turn robot left
+              
+            }
+            else {
+              // Turn robot right
+              
+            }
+          }
+          
+          // Remove room from vector as no longer needed
+          rooms.pop_back();
+        
+        }
+        // Means a sub corridor is coming up before the next room
+        else if(corridors.back().getPreviousCorridorID() == corridors[currentCorridor].getID()) {
+          // Calculate duration to travel to last sub corridor on last corridor and stop
+          unsigned long duration = corridors[currentCorridor].getTotalDuration();
+          duration -= corridors.back().getTotalDuration();
+          motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+          delay(duration);
+          motors.setSpeeds(0, 0);
+        
+          // Check if sub corridor contains any rooms that had people in them (iterate through remaining rooms to do this)
+          for(int i=0; i < rooms.size(); i++) {
+            if(rooms[i].getCorridor() == corridors.back().getID()) {
+              // If the sub corridor contains a room of interest, turn towards sub corridor
+              if(corridors.back().getSide() == 'L') {
+                // Turn robot right
+              }
+              else {
+                // Turn robot left
+        
+              }
+        
+              // Find next room and search it again
+        
+              // Turn robot out of room
+        
+              // Drive back out of sub corrdidor
+        
+              // Turn correct way to carry on return journey
+            }
+          }
+        }        
+      }
+
+      // Turn correct way depending on current corridor and previous corridor attributes
+      
+
+      // Update current corridor to previous one and remove current corridor from vector
+      currentCorridor = corridors.back().getPreviousCorridorID();
+      corridors.pop_back();      
       
     }
   }  
@@ -674,7 +767,10 @@ void detectObject() {
   // Set to 17cm as room depth is 15cm (added extra 2cm to allow for object being on outer edge of room)
   if(cm < 17) {
     rooms.back().setObjectFound(true);
-  }    
+  }
+  else {
+    rooms.back().setObjectFound(false);
+  }
 }
 
 long microsecondsToCentimeters(long microseconds)
