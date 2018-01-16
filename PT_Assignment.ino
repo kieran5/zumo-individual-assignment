@@ -21,14 +21,14 @@ using namespace std;
 
 // Speed/duration settings
 #define REVERSE_SPEED     200
-#define TURN_SPEED        75
+#define TURN_SPEED        80
 #define FORWARD_SPEED     150
 #define REVERSE_DURATION  100
 #define TURN_DURATION     200
 #define FORWARD_DURATION  100
 
-#define TURN_180_SPEED         370
-#define TURN_180_DURATION      370
+#define TURN_180_SPEED         400
+#define TURN_180_DURATION      400
 
 ZumoBuzzer buzzer;
 ZumoReflectanceSensorArray reflectanceSensors(QTR_NO_EMITTER_PIN);
@@ -88,6 +88,7 @@ class Corridor {
     void setTurnDuration(unsigned long);
     unsigned long getTurnDuration();
     void addToTotalDuration(unsigned long);
+    void deductFromTotalDuration(unsigned long);
     unsigned long getTotalDuration();
 };
 
@@ -136,6 +137,10 @@ unsigned long Corridor::getTurnDuration() {
 
 void Corridor::addToTotalDuration(unsigned long duration) {
   totalDuration += duration;  
+}
+
+void Corridor::deductFromTotalDuration(unsigned long duration) {
+  totalDuration -= duration;
 }
 
 unsigned long Corridor::getTotalDuration() {
@@ -446,7 +451,7 @@ void loop() {
 
       // TEST OUTPUTS
 
-      for(int i=0; i < corridors.size(); i++) {
+      /*for(int i=0; i < corridors.size(); i++) {
         Serial.println("Corridor " + String(corridors[i].getID())); 
         Serial.println("Total duration: " + String(corridors[i].getTotalDuration()));
         Serial.println("Turn duration: " + String(corridors[i].getTurnDuration()));
@@ -463,9 +468,259 @@ void loop() {
         if(rooms[i].getObjectFound()) Serial.println("Object found.");
         Serial.println();
         delay(1500);
-      }
+      }*/
 
+      // CODE
+      // Do 180 degree turn
+      motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+      delay(TURN_180_DURATION);
+      motors.setSpeeds(0, 0);
+
+      delay(5000);
       
+      while(corridors.size() > 1) {
+        reflectanceSensors.read(sensor_values);
+        while(!(sensor_values[0] > QTR_THRESHOLD && sensor_values[5] > QTR_THRESHOLD)) {
+          
+          // If next room to be dealt with is on current corridor then continue in to if statement, otherwise it will be a sub corridor coming up next
+          if(rooms.back().getCorridor() == corridors[currentCorridor-1].getID()) {
+            // If the room had an object in it, we need to check it on the way back to check if the person has now been saved
+            if(rooms.back().getObjectFound()) {
+              // Calculate duration to travel to last room on last corridor and stop
+              motors.setSpeeds(0, 0);
+              unsigned long duration = corridors[currentCorridor-1].getTotalDuration();
+              duration -= rooms.back().getDuration();
+
+              // Checks to see if corridor has both a room and a sub corridor and updates durations to accomodate this
+              if(corridors.back().getPreviousCorridorID() == corridors[currentCorridor-1].getID()) {
+                duration -= corridors.back().getTotalDuration();
+                
+                // Will deduct the duration to get to the room on the corridor from the corridors total duration
+                // This is so my duration calculations work correctly when the Zumo has to calculate the distance between
+                // the room and the sub corridor
+                unsigned long roomDuration = rooms.back().getDuration();
+                corridors[currentCorridor-1].deductFromTotalDuration(roomDuration);
+              }
+
+              // Deduct a little off of the duration calculation will always come out as a bit more than actually required
+              duration - 250;
+              motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+              delay(duration);
+              motors.setSpeeds(0, 0);
+
+              delay(2500);
+          
+              // Once robot reaches room, turn it in to room ready to scan
+              if(rooms.back().getSide() == 'L') {
+                // Turn robot right
+                motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+                delay(TURN_180_DURATION / 2);
+                motors.setSpeeds(0, 0);
+                
+              }
+              else {
+                // Turn robot left
+                motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+                delay(TURN_180_DURATION / 2);
+                motors.setSpeeds(0, 0);
+                
+              }
+          
+              // Reset last rooms object found attribute back to false and scan room again
+              rooms.back().setObjectFound(false);
+              performRoomScan();                    
+              
+              // If object still found then turn on led and send message to GUI
+              if(rooms.back().getObjectFound()) {
+                Serial.println("Person still awaiting rescue in room " + String(rooms.back().getID()) + ". FOLLOW ME!");
+  
+                // Beep for testing purposes
+                buzzer.playNote(NOTE_G(4), 500, 15);
+                
+                // Flash LED twice before leaving on for person in need to follow
+                digitalWrite(LED_PIN, HIGH);
+                digitalWrite(LED_PIN, LOW);
+                digitalWrite(LED_PIN, HIGH);
+                digitalWrite(LED_PIN, LOW);
+                digitalWrite(LED_PIN, HIGH);
+              }
+              else {
+                Serial.println("Person in room " + String(rooms.back().getID()) + " has been SAVED!");
+              }
+
+              delay(1500);
+          
+              // Turn back out
+              if(rooms.back().getSide() == 'L') {
+                // Turn robot left
+                motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+                delay(TURN_180_DURATION / 2);
+                motors.setSpeeds(0, 0);              
+              }
+              else {
+                // Turn robot right
+                motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+                delay(TURN_180_DURATION / 2);
+                motors.setSpeeds(0, 0);              
+              }
+            }
+
+            delay(4000);
+            
+            // Remove room from vector as no longer needed
+            rooms.pop_back();
+          
+          }
+          // Means a sub corridor is coming up before the next room - need to check this, and check if the sub corridor contains a room with a person in
+          else if(corridors.back().getPreviousCorridorID() == corridors[currentCorridor-1].getID() && rooms.back().getObjectFound()) {
+            // Calculate duration to travel to last sub corridor on last corridor and stop
+            motors.setSpeeds(0, 0);
+            unsigned long duration = corridors[currentCorridor-1].getTotalDuration();
+            duration -= corridors.back().getTotalDuration();
+                          
+            motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+            delay(duration);
+            motors.setSpeeds(0, 0);
+
+            delay(2000);
+                
+            // If the sub corridor contains a room of interest, turn towards sub corridor
+            if(corridors.back().getSide() == 'L') {
+              // Turn robot right
+              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0); 
+            }
+            else {
+              // Turn robot left
+              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);         
+            }
+
+            delay(4000);
+          
+            // Find next room and search it again
+            // Calculate duration to travel to last room on last corridor and stop
+            duration = rooms.back().getDuration();
+            motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+            delay(duration);
+            motors.setSpeeds(0, 0);
+        
+            // Once robot reaches room, turn it in to room ready to scan
+            if(rooms.back().getSide() == 'L') {
+              // Turn robot left
+              motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);
+              
+            }
+            else {
+              // Turn robot right
+              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);                
+              
+            }
+        
+            // Reset last rooms object found attribute back to false and scan room again
+            rooms.back().setObjectFound(false);
+            performRoomScan();                    
+            
+            // If object still found then turn on led and send message to GUI
+            if(rooms.back().getObjectFound()) {
+              Serial.println("Person still awaiting rescue in room " + String(rooms.back().getID()) + ". FOLLOW ME!");
+              
+              // Flash LED twice before leaving on for person in need to follow
+              digitalWrite(LED_PIN, HIGH);
+              digitalWrite(LED_PIN, LOW);
+              digitalWrite(LED_PIN, HIGH);
+              digitalWrite(LED_PIN, LOW);
+              digitalWrite(LED_PIN, HIGH);
+            }
+            else {
+              Serial.println("Person in room " + String(rooms.back().getID()) + " has been SAVED!");
+            }
+        
+        
+            // Turn back out
+            if(rooms.back().getSide() == 'L') {
+              // Turn robot left
+              motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);              
+            }
+            else {
+              // Turn robot right
+              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);              
+            }
+
+            delay(4000);
+          
+            // Remove room from vector as no longer needed
+            rooms.pop_back();          
+          
+            // Drive back out of sub corrdidor
+            motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+            delay(duration);
+            motors.setSpeeds(0, 0);
+          
+            // Turn correct way to carry on return journey
+            if(corridors.back().getSide() == 'L') {
+              // Turn robot right
+              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);            
+              
+            }
+            else {
+              // Turn robot left
+              motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(0, 0);              
+            }
+
+            delay(4000);
+          }
+          else {
+            goForwardWithBorderDetectUntilCornerReached();       
+          }
+
+          reflectanceSensors.read(sensor_values);
+        }
+  
+        // Line in front reached
+        motors.setSpeeds(0, 0);
+
+        delay(5000);
+        
+  
+        // Update current corridor to previous one
+        currentCorridor = corridors.back().getPreviousCorridorID();
+  
+        // Turn correct way depending on current corridor and previous corridor attributes
+        if(corridors[currentCorridor-1].getSide() == 'L') {
+          // Turn robot right
+          motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+          delay(TURN_180_DURATION / 2);
+          motors.setSpeeds(0, 0);                                         
+        }
+        else { 
+          // Turn robot left
+          motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
+          delay(TURN_180_DURATION / 2);
+          motors.setSpeeds(0, 0); 
+        }
+  
+        // Remove last corridor from vector
+        corridors.pop_back();
+
+
+        delay(5000);
+        
+      }
     }
   }  
 }
@@ -561,8 +816,8 @@ void goForwardWithBorderDetectUntilCornerReached() {
         // We will deduct the duration stored on a room or corridor object from the current corridors totalDuration in order
         // to figure out the duration the Zumo needs to go on its return journey...
         durationVar = duration;
-        Serial.println("duration: " + String(duration));
-        Serial.println("durationVar: " + String(durationVar));
+        //Serial.println("duration: " + String(duration));
+        //Serial.println("durationVar: " + String(durationVar));
         
       }
       // If Zumo is in a sub corridor
@@ -602,6 +857,9 @@ void goForwardWithBorderDetectUntilCornerReached() {
           motors.setSpeeds(0, 0); 
         }
         
+      }
+      else if(onReturnJourney) {
+        Serial.println("Return journey complete, Zumo finished!");
       }
       else {
         // Send message that a corner has been reached to GUI     
@@ -674,7 +932,7 @@ void detectObject() {
   // Set to 17cm as room depth is 15cm (added extra 2cm to allow for object being on outer edge of room)
   if(cm < 17) {
     rooms.back().setObjectFound(true);
-  }    
+  }
 }
 
 long microsecondsToCentimeters(long microseconds)
@@ -711,4 +969,3 @@ void createNewCorridor() {
   // Set previous corridor ID so Zumo can keep this in memory for when it exits back on to previous corridor
   corridors.back().setPreviousCorridorID(prevCorridorID);  
 }
-
