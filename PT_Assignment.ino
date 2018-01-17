@@ -457,15 +457,15 @@ void loop() {
 
       /*for(int i=0; i < corridors.size(); i++) {
         Serial.println("Corridor " + String(corridors[i].getID())); 
-        Serial.println("Total duration: " + String(corridors[i].getTotalDuration()));
+        //Serial.println("Total duration: " + String(corridors[i].getTotalDuration()));
         Serial.println("Turn duration: " + String(corridors[i].getTurnDuration()));
-        Serial.println("Have to turn " + String(corridors[i].getSide()) + " on to corridor " + String(corridors[i].getPreviousCorridorID()));
-        if(corridors[i].getSubCorridorFlag()) Serial.println("Sub Corridor.");
+        //Serial.println("Have to turn " + String(corridors[i].getSide()) + " on to corridor " + String(corridors[i].getPreviousCorridorID()));
+        //if(corridors[i].getSubCorridorFlag()) Serial.println("Sub Corridor.");
         Serial.println();
         delay(1500);
-      }
+      }*/
       
-      for(int i=0; i < rooms.size(); i++) {
+      /*for(int i=0; i < rooms.size(); i++) {
         Serial.println("Room " + String(rooms[i].getID()));
         Serial.println("Duration: " + String(rooms[i].getDuration()));
         Serial.println("On " + String(rooms[i].getSide()) + " of corridor " + String(rooms[i].getCorridor()));
@@ -507,7 +507,7 @@ void loop() {
               }
 
               // Deduct a little off of the duration calculation will always come out as a bit more than actually required
-              duration - 250;
+              //duration - 150;
               motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
               delay(duration);
               motors.setSpeeds(0, 0);
@@ -581,7 +581,7 @@ void loop() {
             motors.setSpeeds(0, 0);
             unsigned long duration = corridors[currentCorridor-1].getTotalDuration();
             duration -= corridors.back().getTotalDuration();
-                          
+            //duration - 150;              
             motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
             delay(duration);
             motors.setSpeeds(0, 0);
@@ -591,14 +591,16 @@ void loop() {
             // If the sub corridor contains a room of interest, turn towards sub corridor
             if(corridors.back().getSide() == 'L') {
               // Turn robot right
-              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
-              delay(TURN_180_DURATION / 2);
+              //motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
+              //delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+              delay(corridors.back().getTurnDuration() - 150);
               motors.setSpeeds(0, 0); 
             }
             else {
               // Turn robot left
-              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
-              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+              delay(corridors.back().getTurnDuration() - 150);
               motors.setSpeeds(0, 0);         
             }
 
@@ -634,6 +636,9 @@ void loop() {
             // If object still found then turn on led and send message to GUI
             if(rooms.back().getObjectFound()) {
               Serial.println("Person still awaiting rescue in room " + String(rooms.back().getID()) + ". FOLLOW ME!");
+
+              // Beep for testing purposes
+              buzzer.playNote(NOTE_G(4), 500, 15);
               
               // Flash LED twice before leaving on for person in need to follow
               digitalWrite(LED_PIN, HIGH);
@@ -674,15 +679,15 @@ void loop() {
             // Turn correct way to carry on return journey
             if(corridors.back().getSide() == 'L') {
               // Turn robot right
-              motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
-              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+              delay(corridors.back().getTurnDuration() - 150);
               motors.setSpeeds(0, 0);            
               
             }
             else {
               // Turn robot left
-              motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
-              delay(TURN_180_DURATION / 2);
+              motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+              delay(corridors.back().getTurnDuration() - 150);
               motors.setSpeeds(0, 0);              
             }
 
@@ -695,11 +700,13 @@ void loop() {
           reflectanceSensors.read(sensor_values);
         }
   
-        // Line in front reached
+        // Line in front reached, do quick reverse
+        motors.setSpeeds(0, 0);
+        motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+        delay(REVERSE_DURATION);
         motors.setSpeeds(0, 0);
 
-        delay(5000);
-        
+        delay(5000);        
   
         // Update current corridor to previous one
         currentCorridor = corridors.back().getPreviousCorridorID();
@@ -707,14 +714,14 @@ void loop() {
         // Turn correct way depending on current corridor and previous corridor attributes
         if(corridors[currentCorridor-1].getSide() == 'L') {
           // Turn robot right
-          motors.setSpeeds(TURN_180_SPEED, -TURN_180_SPEED);
-          delay(TURN_180_DURATION / 2);
+          motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+          delay(corridors.back().getTurnDuration() - 150);
           motors.setSpeeds(0, 0);                                         
         }
         else { 
           // Turn robot left
-          motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
-          delay(TURN_180_DURATION / 2);
+          motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+          delay(corridors.back().getTurnDuration() - 150);
           motors.setSpeeds(0, 0); 
         }
   
@@ -725,6 +732,8 @@ void loop() {
         delay(5000);
         
       }
+
+      goForwardWithBorderDetectUntilCornerReached();
     }
   }  
 }
@@ -862,7 +871,7 @@ void goForwardWithBorderDetectUntilCornerReached() {
         }
         
       }
-      else if(onReturnJourney) {
+      else if(onReturnJourney && corridors.size() == 1) {
         Serial.println("Return journey complete, Zumo finished!");
       }
       else {
@@ -882,7 +891,7 @@ void performRoomScan() {
   for(int i = 0; i < 5; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
-      delay(500);
+      delay(250);
       motors.setSpeeds(0, 0);
 
       detectObject();
@@ -893,7 +902,7 @@ void performRoomScan() {
   for(int i = 0; i < 10; i++) {
     if(!rooms.back().getObjectFound()) {
       motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
-      delay(500);
+      delay(250);
       motors.setSpeeds(0, 0);
 
       detectObject();      
