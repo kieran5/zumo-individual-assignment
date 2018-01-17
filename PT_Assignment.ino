@@ -453,27 +453,6 @@ void loop() {
 
       onReturnJourney = true;
 
-      // TEST OUTPUTS
-
-      /*for(int i=0; i < corridors.size(); i++) {
-        Serial.println("Corridor " + String(corridors[i].getID())); 
-        //Serial.println("Total duration: " + String(corridors[i].getTotalDuration()));
-        Serial.println("Turn duration: " + String(corridors[i].getTurnDuration()));
-        //Serial.println("Have to turn " + String(corridors[i].getSide()) + " on to corridor " + String(corridors[i].getPreviousCorridorID()));
-        //if(corridors[i].getSubCorridorFlag()) Serial.println("Sub Corridor.");
-        Serial.println();
-        delay(1500);
-      }*/
-      
-      /*for(int i=0; i < rooms.size(); i++) {
-        Serial.println("Room " + String(rooms[i].getID()));
-        Serial.println("Duration: " + String(rooms[i].getDuration()));
-        Serial.println("On " + String(rooms[i].getSide()) + " of corridor " + String(rooms[i].getCorridor()));
-        if(rooms[i].getObjectFound()) Serial.println("Object found.");
-        Serial.println();
-        delay(1500);
-      }*/
-
       // CODE
       // Do 180 degree turn
       motors.setSpeeds(-TURN_180_SPEED, TURN_180_SPEED);
@@ -481,7 +460,8 @@ void loop() {
       motors.setSpeeds(0, 0);
 
       delay(5000);
-      
+
+      // Checks it is not on last corridor
       while(corridors.size() > 1) {
         reflectanceSensors.read(sensor_values);
         while(!(sensor_values[0] > QTR_THRESHOLD && sensor_values[5] > QTR_THRESHOLD)) {
@@ -507,13 +487,18 @@ void loop() {
               }
 
               // Deduct a little off of the duration calculation will always come out as a bit more than actually required
-              //duration - 1000;
+              // Uncomment below code to show task 5 working without border detect
+              //duration - 250;
               //motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
               //delay(duration);
               //motors.setSpeeds(0, 0);
 
-              
-              
+
+              // Border detect code for task 5
+
+              // While loop should run for duration/distance between Zumo and next room
+              // Although duration is correct when running without border detect, the code below seem to mess up the durations
+              //
               unsigned long startedAt = millis();
               while(millis() - startedAt < duration / 2) {
                 Serial.println(String(millis() - startedAt) + " " + String(duration));
@@ -613,7 +598,8 @@ void loop() {
             duration -= corridors.back().getTotalDuration();
 
             
-            duration - 500;              
+            //duration - 500;
+                          
             //motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
             //delay(duration);
             //motors.setSpeeds(0, 0);
@@ -885,10 +871,7 @@ void goForwardWithBorderDetectUntilCornerReached() {
         // This will be used in conjunction with the corridors totalDuration attribute
         // We will deduct the duration stored on a room or corridor object from the current corridors totalDuration in order
         // to figure out the duration the Zumo needs to go on its return journey...
-        durationVar = duration;
-        //Serial.println("duration: " + String(duration));
-        //Serial.println("durationVar: " + String(durationVar));
-        
+        durationVar = duration;        
       }
       // If Zumo is in a sub corridor
       // We use 'currentCorridor-1' as vector stores corridor 1 in position 0, corridor 2 in pos 1 etc.
@@ -928,6 +911,7 @@ void goForwardWithBorderDetectUntilCornerReached() {
         }
         
       }
+      // Checks to see if it is on its return journey and on the final corridor
       else if(onReturnJourney && corridors.size() == 1) {
         Serial.println("Return journey complete, Zumo finished!");
       }
