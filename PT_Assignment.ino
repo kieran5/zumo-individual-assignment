@@ -22,13 +22,13 @@ using namespace std;
 
 // Speed/duration settings
 #define REVERSE_SPEED     200
-#define TURN_SPEED        80
-#define FORWARD_SPEED     150
+#define TURN_SPEED        75
+#define FORWARD_SPEED     100
 #define REVERSE_DURATION  100
 #define TURN_DURATION     200
 #define FORWARD_DURATION  100
 
-#define TURN_180_SPEED         400
+#define TURN_180_SPEED         350
 #define TURN_180_DURATION      400
 
 ZumoBuzzer buzzer;
@@ -507,10 +507,40 @@ void loop() {
               }
 
               // Deduct a little off of the duration calculation will always come out as a bit more than actually required
-              //duration - 150;
-              motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
-              delay(duration);
-              motors.setSpeeds(0, 0);
+              //duration - 1000;
+              //motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+              //delay(duration);
+              //motors.setSpeeds(0, 0);
+
+              
+              
+              unsigned long startedAt = millis();
+              while(millis() - startedAt < duration / 2) {
+                Serial.println(String(millis() - startedAt) + " " + String(duration));
+                reflectanceSensors.read(sensor_values);
+                if (sensor_values[0] > QTR_THRESHOLD) {
+                  // if leftmost sensor detects line, reverse and turn to the right
+                  motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+                  delay(REVERSE_DURATION);
+                  motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+                  delay(TURN_DURATION);
+                  motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+                }
+                else if (sensor_values[5] > QTR_THRESHOLD) {
+                  // if rightmost sensor detects line, reverse and turn to the left
+                  motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+                  delay(REVERSE_DURATION);
+                  motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+                  delay(TURN_DURATION);
+                  motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+                }
+                else {
+                  // otherwise, go straight
+                  motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+                }
+              }
+
+              
 
               delay(2500);
           
@@ -581,10 +611,37 @@ void loop() {
             motors.setSpeeds(0, 0);
             unsigned long duration = corridors[currentCorridor-1].getTotalDuration();
             duration -= corridors.back().getTotalDuration();
-            //duration - 150;              
-            motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
-            delay(duration);
-            motors.setSpeeds(0, 0);
+
+            
+            duration - 500;              
+            //motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+            //delay(duration);
+            //motors.setSpeeds(0, 0);
+
+            unsigned long startedAt = millis();
+            while(millis() - startedAt < duration) {
+              reflectanceSensors.read(sensor_values);
+              if (sensor_values[0] > QTR_THRESHOLD) {
+                // if leftmost sensor detects line, reverse and turn to the right
+                motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+                delay(REVERSE_DURATION);
+                motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+                delay(TURN_DURATION);
+                motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+              }
+              else if (sensor_values[5] > QTR_THRESHOLD) {
+                // if rightmost sensor detects line, reverse and turn to the left
+                motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+                delay(REVERSE_DURATION);
+                motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+                delay(TURN_DURATION);
+                motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+              }
+              else {
+                // otherwise, go straight
+                motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+              }
+            }
 
             delay(2000);
                 
